@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Личный планировщик</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell" data-theme="light">
+      <header class="topbar" aria-label="Верхняя панель">
+        <div class="brand">
+          <p class="brand__eyebrow">Личный планировщик</p>
+          <h1>План дел</h1>
+        </div>
+
+        <div class="topbar__actions">
+          <time class="current-date" id="currentDate" datetime="">Сегодня</time>
+
+          <button class="icon-button add-button" id="addTaskButton" type="button" aria-label="Добавить задачу" title="Добавить задачу">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+
+          <button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false">
+            Темная тема
+          </button>
+
+          <div class="settings">
+            <button
+              class="settings-button"
+              id="settingsToggle"
+              type="button"
+              aria-label="Открыть настройки"
+              aria-expanded="false"
+              aria-controls="settingsMenu"
+              title="Открыть настройки"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+                <path d="M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4" />
+              </svg>
+              <span>Настройки</span>
+            </button>
+
+            <div class="settings__menu" id="settingsMenu" hidden>
+              <button id="exportDataButton" type="button">Экспорт данных</button>
+              <button id="importDataButton" type="button">Импорт данных</button>
+              <input id="importDataInput" type="file" accept="application/json,.json" hidden />
+              <button id="clearFinishedButton" type="button">Очистить завершенные</button>
+              <button class="danger-action" id="resetDataButton" type="button">Сбросить все данные</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="storage-warning" id="storageWarning" role="status" hidden>
+        Не удалось сохранить данные в браузере. Задачи будут доступны только до закрытия страницы.
+      </div>
+
+      <main class="workspace">
+        <section class="task-form-panel" id="taskFormPanel" aria-labelledby="taskFormTitle" hidden>
+          <div class="panel__header">
+            <div>
+              <p class="section-kicker">Добавление</p>
+              <h2 id="taskFormTitle">Новая задача</h2>
+            </div>
+          </div>
+
+          <form class="task-form" id="taskForm" novalidate>
+            <div class="form-grid">
+              <label class="field field--wide">
+                <span>Название</span>
+                <input id="taskTitle" name="title" type="text" maxlength="120" autocomplete="off" />
+              </label>
+
+              <label class="field field--wide">
+                <span>Описание</span>
+                <textarea id="taskDescription" name="description" maxlength="1000" rows="3"></textarea>
+              </label>
+
+              <label class="field">
+                <span>Дедлайн</span>
+                <input id="taskDueDate" name="dueDate" type="date" />
+              </label>
+
+              <label class="field">
+                <span>День выполнения</span>
+                <input id="taskMyDayDate" name="myDayDate" type="date" />
+              </label>
+
+              <label class="field">
+                <span>Время</span>
+                <input id="taskTime" name="time" type="time" />
+              </label>
+
+              <label class="field">
+                <span>Категория</span>
+                <select id="taskCategory" name="category">
+                  <option value="personal">Личное</option>
+                  <option value="work">Работа</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Приоритет</span>
+                <select id="taskPriority" name="priority">
+                  <option value="normal">Обычно</option>
+                  <option value="urgent">Срочно</option>
+                  <option value="later">Можно позже</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Повтор</span>
+                <select id="taskRepeat" name="repeatRule">
+                  <option value="none">Не повторять</option>
+                  <option value="daily">Каждый день</option>
+                  <option value="weekly">Каждую неделю</option>
+                  <option value="weekdays">По будням</option>
+                  <option value="monthly">Каждый месяц</option>
+                </select>
+              </label>
+            </div>
+
+            <p class="form-error" id="taskFormError" role="alert" hidden></p>
+
+            <div class="form-actions">
+              <button class="primary-action" type="submit">Сохранить</button>
+              <button id="cancelTaskForm" type="button">Отмена</button>
+            </div>
+          </form>
+        </section>
+
+        <div class="undo-toast" id="undoToast" role="status" hidden>
+          <span>Задача выполнена.</span>
+          <button id="undoCompleteButton" type="button">Отменить</button>
+        </div>
+
+        <div class="primary-grid">
+          <section class="panel panel--today" id="todayPanel" aria-labelledby="todayTitle">
+            <div class="panel__header">
+              <div>
+                <p class="section-kicker">Главный фокус</p>
+                <h2 id="todayTitle">Сегодня</h2>
+              </div>
+              <div class="today-tools">
+                <div class="counter-group">
+                  <span class="counter" id="todayCounter">0 задач</span>
+                  <span class="counter counter--urgent" id="todayUrgentCounter">0 срочных</span>
+                </div>
+                <button
+                  class="filter-toggle"
+                  id="filterToggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="filterPanel"
+                >
+                  Фильтр
+                </button>
+              </div>
+            </div>
+
+            <div class="filters filters--inside" id="filterPanel" hidden>
+              <div>
+                <p class="section-kicker" id="filtersTitle">Фильтр</p>
+                <h3>Показать задачи</h3>
+              </div>
+
+              <div class="filter-groups">
+                <fieldset>
+                  <legend>Категория</legend>
+                  <label>
+                    <input type="radio" name="category-filter" value="all" checked />
+                    Все
+                  </label>
+                  <label>
+                    <input type="radio" name="category-filter" value="work" />
+                    Работа
+                  </label>
+                  <label>
+                    <input type="radio" name="category-filter" value="personal" />
+                    Личное
+                  </label>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Приоритет</legend>
+                  <label>
+                    <input type="radio" name="priority-filter" value="all" checked />
+                    Все
+                  </label>
+                  <label>
+                    <input type="radio" name="priority-filter" value="urgent" />
+                    Срочно
+                  </label>
+                  <label>
+                    <input type="radio" name="priority-filter" value="normal" />
+                    Обычно
+                  </label>
+                  <label>
+                    <input type="radio" name="priority-filter" value="later" />
+                    Можно позже
+                  </label>
+                </fieldset>
+              </div>
+            </div>
+
+            <div class="task-list" id="todayTasks"></div>
+
+            <div class="empty-state" id="todayEmpty">
+              <p>На сегодня все спокойно. Можно выдохнуть и выбрать, что хочется сделать дальше.</p>
+            </div>
+          </section>
+
+          <section class="panel panel--week" id="weekPanel" aria-labelledby="weekTitle">
+            <div class="panel__header">
+              <div>
+                <p class="section-kicker">Ближайшие дни</p>
+                <h2 id="weekTitle">Ближайшие 7 дней</h2>
+              </div>
+              <span class="counter" id="weekCounter">0 задач</span>
+            </div>
+
+            <div class="week-list" id="weekList" aria-label="Ближайшие дни">
+            </div>
+          </section>
+        </div>
+
+        <div class="secondary-grid">
+          <section class="panel" id="overduePanel" aria-labelledby="overdueTitle">
+            <div class="panel__header">
+              <div>
+                <p class="section-kicker">Требует решения</p>
+                <h2 id="overdueTitle">Просроченные</h2>
+              </div>
+              <span class="counter counter--warn" id="overdueCounter">0 задач</span>
+            </div>
+
+            <div class="task-list" id="overdueTasks"></div>
+
+            <div class="empty-state empty-state--small" id="overdueEmpty">
+              <p>Просроченных задач нет.</p>
+            </div>
+          </section>
+
+          <section class="panel" id="ideasPanel" aria-labelledby="ideasTitle">
+            <div class="panel__header">
+              <div>
+                <p class="section-kicker">Без даты</p>
+                <h2 id="ideasTitle">Планы / Идеи</h2>
+              </div>
+              <span class="counter" id="ideasCounter">0 задач</span>
+            </div>
+
+            <div class="task-list" id="ideasTasks"></div>
+
+            <div class="empty-state empty-state--small" id="ideasEmpty">
+              <p>Пока нет идей без срока.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div class="modal-backdrop" id="seriesScopeModal" hidden>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="seriesScopeTitle" aria-describedby="seriesScopeText">
+          <h2 id="seriesScopeTitle">Что изменить?</h2>
+          <p id="seriesScopeText">Выберите, применить действие только к этой задаче или ко всей серии повторов.</p>
+          <div class="modal-actions">
+            <button id="seriesSingleButton" type="button">Только эту задачу</button>
+            <button class="primary-action" id="seriesAllButton" type="button">Всю серию</button>
+            <button id="seriesCancelButton" type="button">Отмена</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
