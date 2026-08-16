@@ -28,6 +28,7 @@
   const overdueTasks = document.querySelector("#overdueTasks");
   const ideasTasks = document.querySelector("#ideasTasks");
   const todayEmpty = document.querySelector("#todayEmpty");
+  const todayEmptyText = todayEmpty ? todayEmpty.querySelector("p") : null;
   const overdueEmpty = document.querySelector("#overdueEmpty");
   const ideasEmpty = document.querySelector("#ideasEmpty");
   const todayCounter = document.querySelector("#todayCounter");
@@ -54,6 +55,7 @@
   let undoTimer = null;
   let draggedTaskId = null;
   let seriesScopeResolve = null;
+  let rawStorageSnapshot = null;
   const expandedWeekDays = new Set();
 
   const labels = {
@@ -373,7 +375,35 @@
   function showStorageWarning(show) {
     if (storageWarning) {
       storageWarning.hidden = !show;
+
+      if (!show) {
+        storageWarning.textContent = "Не удалось сохранить данные в браузере. Задачи будут доступны только до закрытия страницы.";
+        return;
+      }
+
+      if (rawStorageSnapshot) {
+        storageWarning.innerHTML = `
+          <span>Не удалось прочитать сохраненные данные. Приложение открыто во временном режиме, чтобы не перезаписать старые данные.</span>
+          <button type="button" id="exportRawDataButton">Скачать сырые данные</button>
+        `;
+      }
     }
+  }
+
+  function exportRawStorageData() {
+    if (!rawStorageSnapshot) {
+      return;
+    }
+
+    const blob = new Blob([rawStorageSnapshot], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `planner-raw-data-${toISODate(new Date())}.txt`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   function getStoredItem(key) {
@@ -422,6 +452,7 @@
       try {
         data = migrateData(JSON.parse(current || legacy));
       } catch (error) {
+        rawStorageSnapshot = current || legacy;
         storageAvailable = false;
         showStorageWarning(true);
         data = createInitialData({ seedDemo: false, resetWasUsed: false });
@@ -510,6 +541,35 @@
   function hideFormError() {
     taskFormError.textContent = "";
     taskFormError.hidden = true;
+    clearFieldErrors(taskForm);
+  }
+
+  function clearFieldErrors(form) {
+    form.querySelectorAll("[data-field-error]").forEach((node) => {
+      node.textContent = "";
+      node.hidden = true;
+    });
+  }
+
+  function showFieldError(form, error, fallbackNode) {
+    clearFieldErrors(form);
+    fallbackNode.textContent = "";
+    fallbackNode.hidden = true;
+
+    const fieldError = form.querySelector(`[data-field-error="${error.field}"]`);
+
+    if (fieldError) {
+      fieldError.textContent = error.message;
+      fieldError.hidden = false;
+      const field = form.elements[error.field];
+      if (field) {
+        field.focus();
+      }
+      return;
+    }
+
+    fallbackNode.textContent = error.message;
+    fallbackNode.hidden = false;
   }
 
   function getFormValue(form, name) {
@@ -527,21 +587,30 @@
       .reduce((max, task) => Math.max(max, Number(task.order) || 0), 0) + 10;
   }
 
-  function validateTaskInput(values) {
+  function getTaskInputError(values) {
     if (!values.title) {
-      return "Введите название задачи.";
+      return { field: "title", message: "Введите название задачи." };
     }
 
     if (values.title.length > 120) {
-      return "Название не должно быть длиннее 120 символов.";
+      return { field: "title", message: "Название не должно быть длиннее 120 символов." };
     }
 
     if (values.description && values.description.length > 1000) {
-      return "Описание не должно быть длиннее 1000 символов.";
+      return { field: "description", message: "Описание не должно быть длиннее 1000 символов." };
     }
 
     if (values.time && !values.dueDate && !values.myDayDate) {
-      return "Время можно задать только вместе со сроком или датой планирования.";
+      return { field: "time", message: "Время можно задать только вместе с дедлайном или днем выполнения." };
+    }
+
+    return null;
+  }
+
+  function validateTaskInput(values) {
+    const error = getTaskInputError(values);
+    if (error) {
+      return error.message;
     }
 
     return "";
@@ -970,6 +1039,15 @@
       return;
     }
 
+    rawStorageSnapshot = null;
+    storageAvailable = true;
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch (error) {
+      storageAvailable = false;
+    }
+
     appState = createInitialData({ seedDemo: false, resetWasUsed: true });
     setTheme(appState.settings.theme);
     saveData();
@@ -1049,6 +1127,14 @@
     renderWeek(week);
 
     todayEmpty.hidden = today.length > 0;
+    if (todayEmptyText) {
+      const hasCompletedToday = appState.tasks.some((task) => {
+        return task.status === "completed" && task.myDayDate === todayISO;
+      });
+      todayEmptyText.textContent = hasCompletedToday && todayAll.length === 0
+        ? "Все задачи на сегодня выполнены. Отличная работа."
+        : "На сегодня все спокойно. Можно выдохнуть и выбрать, что хочется сделать дальше.";
+    }
     overdueEmpty.hidden = overdue.length > 0;
     ideasEmpty.hidden = ideas.length > 0;
 
@@ -1138,6 +1224,8 @@
   }
 
   function renderTaskCard(task) {
+    const shouldShowDueDate = task.dueDate && task.dueDate !== task.myDayDate;
+
     return `
       <article class="task-card" data-task-id="${escapeHtml(task.id)}" draggable="true">
         <div class="task-card__top">
@@ -1148,7 +1236,7 @@
         </div>
         <div class="task-meta">
           ${task.time ? `<span>${escapeHtml(task.time)}</span>` : ""}
-          ${task.dueDate ? `<span>Дедлайн: ${escapeHtml(formatDate(task.dueDate))}</span>` : ""}
+          ${shouldShowDueDate ? `<span>Дедлайн: ${escapeHtml(formatDate(task.dueDate))}</span>` : ""}
           ${task.myDayDate && task.myDayDate !== task.dueDate ? `<span>План: ${escapeHtml(formatDate(task.myDayDate))}</span>` : ""}
           <span class="tag tag--${escapeHtml(task.category)}">${labels.category[task.category]}</span>
           <span class="tag tag--${escapeHtml(task.priority)}">${labels.priority[task.priority]}</span>
@@ -1173,10 +1261,12 @@
           <label class="field field--wide">
             <span>Название</span>
             <input name="title" type="text" maxlength="120" value="${escapeHtml(task.title)}" />
+            <small class="field-error" data-field-error="title" hidden></small>
           </label>
           <label class="field field--wide">
             <span>Описание</span>
             <textarea name="description" maxlength="1000" rows="3">${escapeHtml(task.description)}</textarea>
+            <small class="field-error" data-field-error="description" hidden></small>
           </label>
           <label class="field">
             <span>Дедлайн</span>
@@ -1189,6 +1279,7 @@
           <label class="field">
             <span>Время</span>
             <input name="time" type="time" value="${escapeHtml(task.time || "")}" />
+            <small class="field-error" data-field-error="time" hidden></small>
           </label>
           <label class="field">
             <span>Категория</span>
@@ -1252,10 +1343,10 @@
   function handleTaskFormSubmit(event) {
     event.preventDefault();
     const values = collectTaskFormValues(taskForm);
-    const error = validateTaskInput(values);
+    const error = getTaskInputError(values);
 
     if (error) {
-      showFormError(error);
+      showFieldError(taskForm, error, taskFormError);
       return;
     }
 
@@ -1341,12 +1432,11 @@
     event.preventDefault();
     const card = form.closest("[data-task-id]");
     const values = collectEditValues(form);
-    const error = validateTaskInput(values);
+    const error = getTaskInputError(values);
     const errorNode = form.querySelector("[data-edit-error]");
 
     if (error) {
-      errorNode.textContent = error;
-      errorNode.hidden = false;
+      showFieldError(form, error, errorNode);
       return;
     }
 
@@ -1546,6 +1636,11 @@
     });
 
     document.addEventListener("click", function (event) {
+      if (event.target.closest("#exportRawDataButton")) {
+        exportRawStorageData();
+        return;
+      }
+
       if (!settingsMenu.hidden && !event.target.closest(".settings")) {
         toggleSettings(false);
       }
@@ -1605,6 +1700,7 @@
     ensureUpcomingRepeatsForAll,
     getNextRepeatDate,
     exportData,
+    exportRawStorageData,
     importData,
     undoComplete,
     cancelTask,

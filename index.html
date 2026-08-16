@@ -74,11 +74,13 @@
               <label class="field field--wide">
                 <span>Название</span>
                 <input id="taskTitle" name="title" type="text" maxlength="120" autocomplete="off" />
+                <small class="field-error" data-field-error="title" hidden></small>
               </label>
 
               <label class="field field--wide">
                 <span>Описание</span>
                 <textarea id="taskDescription" name="description" maxlength="1000" rows="3"></textarea>
+                <small class="field-error" data-field-error="description" hidden></small>
               </label>
 
               <label class="field">
@@ -94,6 +96,7 @@
               <label class="field">
                 <span>Время</span>
                 <input id="taskTime" name="time" type="time" />
+                <small class="field-error" data-field-error="time" hidden></small>
               </label>
 
               <label class="field">

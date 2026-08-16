@@ -64,6 +64,20 @@ button {
   cursor: pointer;
 }
 
+button:hover:not(:disabled),
+label:hover {
+  border-color: var(--accent);
+  filter: brightness(0.98);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -218,6 +232,10 @@ h3 {
 }
 
 .storage-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 12px;
   padding: 12px 14px;
   border: 1px solid rgba(157, 65, 54, 0.28);
@@ -226,8 +244,23 @@ h3 {
   color: #7a3d35;
 }
 
+.storage-warning button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(157, 65, 54, 0.35);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: #7a3d35;
+  font-weight: 700;
+}
+
 [data-theme="dark"] .storage-warning {
   background: #3a2925;
+  color: #f2c9bf;
+}
+
+[data-theme="dark"] .storage-warning button {
   color: #f2c9bf;
 }
 
@@ -313,6 +346,12 @@ h3 {
 .form-error {
   margin: 0;
   color: #9d4136;
+  font-weight: 700;
+}
+
+.field-error {
+  color: #9d4136;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -473,7 +512,7 @@ label {
   padding: 0 10px;
   border-radius: var(--radius);
   background: var(--work);
-  color: var(--accent-strong);
+  color: var(--work-text);
   font-size: 0.88rem;
   font-weight: 700;
   white-space: nowrap;
@@ -507,7 +546,7 @@ label {
 .filter-toggle[aria-expanded="true"] {
   border-color: rgba(111, 145, 170, 0.5);
   background: var(--work);
-  color: var(--accent-strong);
+  color: var(--work-text);
 }
 
 .counter--warn {
