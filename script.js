@@ -386,7 +386,10 @@
           <span>Не удалось прочитать сохраненные данные. Приложение открыто во временном режиме, чтобы не перезаписать старые данные.</span>
           <button type="button" id="exportRawDataButton">Скачать сырые данные</button>
         `;
+        return;
       }
+
+      storageWarning.textContent = "Не удалось сохранить данные в браузере. Задачи будут доступны только до закрытия страницы.";
     }
   }
 
@@ -407,7 +410,7 @@
   }
 
   function getStoredItem(key) {
-    if (!storageAvailable) {
+    if (!storageAvailable && rawStorageSnapshot) {
       return memoryData ? JSON.stringify(memoryData) : null;
     }
 
@@ -423,13 +426,14 @@
   function setStoredItem(key, value) {
     memoryData = JSON.parse(value);
 
-    if (!storageAvailable) {
+    if (rawStorageSnapshot) {
       showStorageWarning(true);
       return false;
     }
 
     try {
       window.localStorage.setItem(key, value);
+      storageAvailable = true;
       showStorageWarning(false);
       return true;
     } catch (error) {
@@ -1235,7 +1239,7 @@
           </div>
         </div>
         <div class="task-meta">
-          ${task.time ? `<span>${escapeHtml(task.time)}</span>` : ""}
+          ${task.time ? `<span class="task-time">${escapeHtml(task.time)}</span>` : ""}
           ${shouldShowDueDate ? `<span>Дедлайн: ${escapeHtml(formatDate(task.dueDate))}</span>` : ""}
           ${task.myDayDate && task.myDayDate !== task.dueDate ? `<span>План: ${escapeHtml(formatDate(task.myDayDate))}</span>` : ""}
           <span class="tag tag--${escapeHtml(task.category)}">${labels.category[task.category]}</span>
@@ -1243,12 +1247,17 @@
           ${task.repeatRule !== "none" ? `<span>${labels.repeatRule[task.repeatRule]}</span>` : ""}
         </div>
         <div class="card-actions">
-          <button type="button" data-action="complete">Выполнить</button>
-          <button type="button" data-action="cancel">Отменить задачу</button>
-          <button type="button" data-action="move">Перенести в другой день</button>
-          <button type="button" data-action="change-due">Изменить дедлайн</button>
-          <button type="button" data-action="edit">Редактировать</button>
-          <button type="button" data-action="delete">Удалить</button>
+          <button class="complete-action" type="button" data-action="complete">Выполнить</button>
+          <details class="card-menu">
+            <summary>Еще</summary>
+            <div class="card-menu__list">
+              <button type="button" data-action="move">Перенести в другой день</button>
+              <button type="button" data-action="change-due">Изменить дедлайн</button>
+              <button type="button" data-action="edit">Редактировать</button>
+              <button type="button" data-action="cancel">Отменить задачу</button>
+              <button type="button" data-action="delete">Удалить</button>
+            </div>
+          </details>
         </div>
       </article>
     `;

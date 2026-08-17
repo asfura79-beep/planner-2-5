@@ -366,13 +366,32 @@ h3 {
 .form-actions button,
 .card-actions button,
 .edit-actions button,
-.undo-toast button {
+.undo-toast button,
+.card-menu summary {
   min-height: 36px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+}
+
+.card-menu summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+  user-select: none;
+}
+
+.card-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.complete-action {
+  border-color: transparent !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 700;
 }
 
 .primary-action {
@@ -638,9 +657,23 @@ label {
 .task-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+.task-time {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .tag {
@@ -675,6 +708,41 @@ label {
 .tag--later {
   background: #dceadf;
   color: #4d7457;
+}
+
+.card-actions {
+  align-items: flex-start;
+}
+
+.card-menu {
+  position: relative;
+}
+
+.card-menu[open] summary {
+  border-color: var(--accent);
+}
+
+.card-menu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 48px));
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-menu__list button {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
 }
 
 .task-description {
